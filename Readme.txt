@@ -1,0 +1,1 @@
+these script are created for cyber patriots to speed up the securing process of Linux OSes

@@ -1,0 +1,1229 @@
+jQuery(document).ready(function() {
+
+	jQuery(document).on('click', 'tr.mentor-main', function() {
+		mentor_id = jQuery(this).data('id')
+		showclass = 'tr.mentor-about-' + mentor_id;
+		jQuery('tr.mentor-about').hide();
+		jQuery( showclass ).show();
+	});
+
+	jQuery(document).on('click', 'tr.org-main', function() {
+		org_id = jQuery(this).data('id')
+		showclass = 'tr.org-id-' + org_id;
+		jQuery('tr.coach-main').hide();
+		jQuery('tr.team-main').hide();
+		jQuery('tr.team-about').hide();
+		jQuery( showclass ).show();
+	});
+
+	jQuery(document).on('click', 'tr.coach-main', function() {
+		coach_id = jQuery(this).data('id')
+		org_id = jQuery(this).data('org')
+		showclass = 'tr.org-' + org_id + '-coach-id-' + coach_id;
+		jQuery('tr.team-about').hide();
+		jQuery('tr.team-main').hide();
+		jQuery( showclass ).show();
+	});
+
+	jQuery(document).on('click', 'tr.team-main', function() {
+		coach_id = jQuery(this).data('id')
+		showclass = 'tr.team-id-' + coach_id;
+		jQuery('tr.team-about').hide();
+		jQuery( showclass ).show();
+	});
+
+	jQuery('#ajax-response div.close-button').on('click', function(){
+		jQuery('#ajax-rsponse').hide();
+		location.reload();
+	});
+
+	jQuery('#cp-portal-login').on('submit', function(e){
+		e.preventDefault();
+		jQuery('#ajax-response-inline div.message').html('');
+
+		const email = jQuery('#email').val().trim();
+		const password = jQuery('#password').val().trim();
+
+		jQuery.ajax({
+			url: cyberpatriot.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'cyberpatriot_login',
+				email: email,
+				password: password,
+				nonce: cyberpatriot.nonce,
+			},
+			success: function(response) {
+				if ( response.success ) {
+					location.reload();
+				} else {
+					console.log( response );
+					jQuery('#ajax-response-inline div.message').html(response.message);
+					jQuery('#ajax-response-inline').removeClass('ajax-success');
+					jQuery('#ajax-response-inline').addClass('ajax-failure');
+					jQuery('#ajax-response-inline').show();
+					console.error("AJAX Error:", response);
+				}
+			},
+			error: function(xhr,status,error) {
+				jQuery('#ajax-response-inline div.message').html("There has been an error processing your sign in form.");
+				jQuery('#ajax-response-inline').removeClass('ajax-success');
+				jQuery('#ajax-response-inline').addClass('ajax-failure');
+				jQuery('#ajax-response-inline').show();
+				console.error("AJAX Error:", status.error);
+			}
+		});
+
+	});
+
+	jQuery('#cp-lost-password').on('submit', function(e){
+		e.preventDefault();
+		jQuery('#ajax-response-inline div.message').html('');
+
+		const email = jQuery('#lost-password-email').val().trim();
+
+		jQuery.ajax({
+			url: cyberpatriot.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'cyberpatriot_lost_password',
+				email: email,
+				nonce: cyberpatriot.nonce,
+			},
+			success: function(response) {
+				if ( response.success ) {
+					location.reload();
+				} else {
+					console.log( response );
+					jQuery('#ajax-response-inline div.message').html(response.message);
+					jQuery('#ajax-response-inline').removeClass('ajax-success');
+					jQuery('#ajax-response-inline').addClass('ajax-failure');
+					jQuery('#ajax-response-inline').show();
+					console.error("AJAX Error:", response);
+				}
+			},
+			error: function(xhr,status,error) {
+				jQuery('#ajax-response-inline div.message').html("There has been an error processing your password reset form.");
+				jQuery('#ajax-response-inline').removeClass('ajax-success');
+				jQuery('#ajax-response-inline').addClass('ajax-failure');
+				jQuery('#ajax-response-inline').show();
+				console.error("AJAX Error:", status.error);
+			}
+		});
+
+	});
+
+	jQuery('#cp-reset-password').on('submit', function(e){
+		e.preventDefault();
+		jQuery('#ajax-response-inline div.message').html('');
+
+		const request_id = jQuery('#request_id').val().trim();
+		const token_string = jQuery('#token_string').val().trim();
+		const new_password = jQuery('#new_password').val().trim();
+		const confirm_password = jQuery('#confirm_password').val().trim();
+
+		if ( new_password != confirm_password ) {
+
+			jQuery('#ajax-response-inline div.message').html("The password values must match exactly. Please review your entries and resubmit the form.");
+			jQuery('#ajax-response-inline').removeClass('ajax-success');
+			jQuery('#ajax-response-inline').addClass('ajax-failure');
+			jQuery('#ajax-response-inline').show();
+
+		} else {
+
+			jQuery.ajax({
+				url: cyberpatriot.ajax_url,
+				type: 'POST',
+				data: {
+					action: 'cyberpatriot_reset_password',
+					request_id: request_id,
+					token_string: token_string,
+					new_password: new_password,
+					nonce: cyberpatriot.nonce,
+				},
+				success: function(response) {
+					console.log( response );
+					jQuery('#ajax-response-inline div.message').html(response.message);
+					jQuery('#ajax-response-inline').removeClass('ajax-success');
+					jQuery('#ajax-response-inline').addClass('ajax-failure');
+					jQuery('#ajax-response-inline').show();
+					console.error("AJAX Error:", response);
+				},
+				error: function(xhr,status,error) {
+					jQuery('#ajax-response-inline div.message').html("There has been an error processing your password reset form.");
+					jQuery('#ajax-response-inline').removeClass('ajax-success');
+					jQuery('#ajax-response-inline').addClass('ajax-failure');
+					jQuery('#ajax-response-inline').show();
+					console.error("AJAX Error:", status.error);
+				}
+			});
+
+		}
+
+	});
+
+	jQuery('#cp-edit-form').on('submit', function(e){
+		e.preventDefault();
+		jQuery('#ajax-response').text('');
+
+		let pw = jQuery('input[name=password]').val();
+		let pw2 = jQuery('input[name=password_confirm]').val();
+		if(pw && pw !== pw2){
+			jQuery('#ajax-response').css('color','red').text('Passwords do not match.');
+			return;
+		}
+
+		let data = {
+			action: 'cyberpatriot_edit',
+			first_name: jQuery('input[name=first_name]').val(),
+			last_name: jQuery('input[name=last_name]').val(),
+			email: jQuery('input[name=email]').val(),
+			t_shirt: jQuery('select[name=t_shirt]').val(),
+			password: pw,
+			password_confirm: pw2,
+			nonce: cyberpatriot.nonce,
+		};
+
+		jQuery.post(cyberpatriot.ajax_url, data, function(resp){
+			if(resp.success){
+				jQuery('#ajax-response').css('color','green').text(resp.data);
+				// Optionally clear password fields
+				jQuery('input[name=password], input[name=password_confirm]').val('');
+			}else{
+				jQuery('#ajax-response').css('color','red').text(resp.data);
+			}
+		});
+	});
+
+	jQuery(document).on('input', '#verify_email', function() {
+		var verify = jQuery('#verify_email').val();
+		var coach = jQuery('#submitting_coach_email').val();
+
+		verify = verify.trim().toLowerCase();
+		coach = coach.trim().toLowerCase();
+
+		if ( verify == coach ) {
+			jQuery('.verify-notice').addClass('flash-notice');
+			jQuery('.team-form-submit').prop('disabled', true);
+		} else {
+			jQuery('.verify-notice').removeClass('flash-notice');
+			jQuery('.team-form-submit').prop('disabled', false);
+		}
+	});
+
+	jQuery(document).on('submit', '#cp-volunteer-form', function(e) {
+		e.preventDefault();
+
+		let errors = [];
+
+		const first = jQuery('#first_name').val().trim();
+		const last = jQuery('#last_name').val().trim();
+		const email = jQuery('#email').val().trim();
+		const sponsor_employed = jQuery('#sponsor_employed').val().trim();
+		const phone = jQuery('#phone').val().trim();
+		const pw = jQuery('#password').val();
+		const pwc = jQuery('#confirm_password').val();
+		const found_out = jQuery('#found_out').val().trim();
+		const t_shirt = jQuery('#t_shirt').val().trim();
+		const media_release = jQuery('#media_release').val().trim();
+		const competition_terms = jQuery('#competition_terms').val().trim();
+
+		if (!first) errors.push("First name is required.");
+		if (!last) errors.push("Last name is required.");
+		if (!email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) errors.push("Valid email is required.");
+		if (!phone) errors.push("Phone is required.");
+		if (pw !== pwc) errors.push("Passwords do not match.");
+
+		//console.log( pw + "|" + pwc );
+		console.log( errors );
+		response_target = '#ajax-response';
+		response_scroll = '';
+
+		var response_format = jQuery('#cp-volunteer-form').data('response_format');
+
+		if ( response_format == 'inline' ) {
+			response_target = '#ajax-response-inline';
+			response_scroll = jQuery(window).scrollTop(0);
+		}
+
+		if (errors.length > 0) {
+			jQuery(response_target).addClass('alert-failure');
+			jQuery(response_target + ' div.message').html(errors.join("<br>"));
+			jQuery(response_target).show();
+			response_scroll;
+			return;
+		}
+
+		jQuery.ajax({
+			url: cyberpatriot.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'process_volunteer_form',
+				nonce: cyberpatriot.nonce,
+				data: jQuery(this).serialize()
+			},
+			success: function(response) {
+				console.log( response )
+				jQuery(response_target).addClass('alert-success');
+				jQuery(response_target + ' div.message').html(response.message);
+				jQuery(response_target).show();
+				response_scroll;
+				if (response.success) {
+					if ( response.dest ) {
+						//window.location.href = response.dest;
+					} else {
+						//window.location.reload()
+					}
+				}
+			},
+			error: function(xhr,status,error) {
+				jQuery(response_target).addClass('alert-failure');
+				jQuery(response_target + ' div.message').html("There has been an error processing your form.");
+				jQuery(response_target).show();
+				response_scroll
+				console.error("AJAX Error:", status.error);
+			}
+		});
+	});
+
+	jQuery(document).on('submit', '#cp-password-form', function(e) {
+		e.preventDefault();
+
+		let errors = [];
+
+		const pw = jQuery('#password').val().trim();
+		const pwc = jQuery('#confirm_password').val().trim();
+
+		if (pw !== pwc) errors.push("Passwords do not match.");
+
+		response_target = '#ajax-response-inline';
+
+		if (errors.length > 0) {
+			jQuery(response_target).addClass('alert-failure');
+			jQuery(response_target + ' div.message').html(errors.join("<br>"));
+			jQuery(response_target).show();
+			return;
+		}
+
+		jQuery.ajax({
+			url: cyberpatriot.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'process_password_form',
+				nonce: cyberpatriot.nonce,
+				data: jQuery(this).serialize()
+			},
+			success: function(response) {
+				console.log( response )
+				jQuery(response_target).addClass('alert-success');
+				jQuery(response_target + ' div.message').html(response.message);
+				jQuery(response_target).show();
+			},
+			error: function(xhr,status,error) {
+				jQuery(response_target).addClass('alert-failure');
+				jQuery(response_target + ' div.message').html("There has been an error processing your form.");
+				jQuery(response_target).show();
+				console.error("AJAX Error:", status.error);
+			}
+		});
+	});
+
+	jQuery(document).on('submit', '#cp-mentor-form', function(e) {
+		e.preventDefault();
+		jQuery.ajax({
+			url: cyberpatriot.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'process_volunteer_form',
+				nonce: cyberpatriot.nonce,
+				data: jQuery(this).serialize()
+			},
+			success: function(response) {
+				console.log( response )
+				jQuery('#ajax-response').addClass('alert-success');
+				jQuery('#ajax-response div.message').html(response.message);
+				jQuery('#ajax-response').show();
+			},
+			error: function(xhr,status,error) {
+				jQuery('#ajax-response').addClass('alert-failure');
+				jQuery('#ajax-response div.message').html("There has been an error processing your form.");
+				jQuery('#ajax-response div.message').show;
+				jQuery('#ajax-response').show();
+				console.error("AJAX Error:", status.error);
+			}
+		});
+	});
+
+	jQuery(document).on('submit', '#cp-transaction-form', function(e) {
+		e.preventDefault();
+		jQuery.ajax({
+			url: cyberpatriot.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'process_transaction_form',
+				nonce: cyberpatriot.nonce,
+				data: jQuery(this).serialize()
+			},
+			success: function(response) {
+				console.log( response )
+				jQuery('#ajax-response-inline').addClass('alert-success');
+				jQuery('#ajax-response-inline div.message').html(response.message);
+				jQuery('#ajax-response-inline').show();
+			},
+			error: function(xhr,status,error) {
+				jQuery('#ajax-response-inline').addClass('alert-failure');
+				jQuery('#ajax-response-inline div.message').html("There has been an error processing your form.");
+				jQuery('#ajax-response-inline div.message').show;
+				jQuery('#ajax-response-inline').show();
+				console.error("AJAX Error:", status.error);
+			}
+		});
+	});
+
+	jQuery(document).on('submit', '#cp-invoice-form', function(e) {
+		e.preventDefault();
+		jQuery.ajax({
+			url: cyberpatriot.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'process_invoice_form',
+				nonce: cyberpatriot.nonce,
+				data: jQuery(this).serialize()
+			},
+			success: function(response) {
+				console.log( response )
+				jQuery('.invoice-submit').prop('disabled', true);
+				jQuery('#ajax-response-inline').addClass('alert-success');
+				jQuery('#ajax-response-inline div.message').html(response.message);
+				jQuery('#ajax-response-inline').show();
+			},
+			error: function(xhr,status,error) {
+				jQuery('#ajax-response-inline').addClass('alert-failure');
+				jQuery('#ajax-response-inline div.message').html("There has been an error processing your form.");
+				jQuery('#ajax-response-inline div.message').show;
+				jQuery('#ajax-response-inline').show();
+				console.error("AJAX Error:", status.error);
+			}
+		});
+	});
+
+	jQuery(document).on('submit', '#cp-cisco-form', function(e) {
+		e.preventDefault();
+		jQuery.ajax({
+			url: cyberpatriot.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'process_cisco_form',
+				nonce: cyberpatriot.nonce,
+				data: jQuery(this).serialize()
+			},
+			success: function(response) {
+				console.log( response )
+				jQuery('.invoice-submit').prop('disabled', true);
+				jQuery('#ajax-response-inline').addClass('alert-success');
+				jQuery('#ajax-response-inline div.message').html(response.message);
+				jQuery('#ajax-response-inline').show();
+			},
+			error: function(xhr,status,error) {
+				jQuery('#ajax-response-inline').addClass('alert-failure');
+				jQuery('#ajax-response-inline div.message').html("There has been an error processing your form.");
+				jQuery('#ajax-response-inline div.message').show;
+				jQuery('#ajax-response-inline').show();
+				console.error("AJAX Error:", status.error);
+			}
+		});
+	});
+
+	jQuery(document).on('submit', '#cp-team-form', function(e) {
+		e.preventDefault();
+
+		jQuery('.team-form-submit').prop('disabled', true).text('Submitting...');;
+
+		var coach = jQuery('#submitting_coach_email').val();
+
+		/*
+		const team_id = jQuery('#team_id').val().trim();
+
+		const org_type = jQuery('#org_type').val().trim();
+		const org_name = jQuery('#org_name').val().trim();
+		const nickname = jQuery('#nickname').val().trim();
+		const about = jQuery('#about').val().trim();
+		const cisco_login = jQuery('#cisco_login').val().trim();
+		const address = jQuery('#address').val().trim();
+		const address_2 = jQuery('#address_2').val().trim();
+		const city = jQuery('#city').val().trim();
+		const state = jQuery('#state').val().trim();
+		const zip = jQuery('#zip').val().trim();
+		const country = jQuery('#country').val().trim();
+		const coe = jQuery('#coe').val().trim();
+		const need_mentor = jQuery('#need_mentor').val().trim();
+		const virtual_mentor = jQuery('#virtual_mentor').val().trim();
+		const ship_address = jQuery('#ship_address').val().trim();
+		const ship_address_2 = jQuery('#ship_address_2').val().trim();
+		const ship_city = jQuery('#ship_city').val().trim();
+		const ship_state = jQuery('#ship_state').val().trim();
+		const ship_zip = jQuery('#ship_zip').val().trim();
+		const ship_country = jQuery('#ship_country').val().trim();
+		const verify_name = jQuery('#verify_name').val().trim();
+		const verify_title = jQuery('#verify_title').val().trim();
+		const verify_email = jQuery('#verify_email').val().trim();
+		const confirm_verify_email = jQuery('#confirm_verify_email').val().trim();
+		const verify_phone = jQuery('#verify_phone').val().trim();
+		const verify_phone_ext = jQuery('#verify_phone_ext').val().trim();
+		const rules_cert = jQuery('#rules_cert').val().trim();
+		const tech_cert = jQuery('#tech_cert').val().trim();
+		const collab_cert = jQuery('#collab_cert').val().trim();
+		const attend_cert = jQuery('#attend_cert').val().trim();
+		const delete_cert = jQuery('#delete_cert').val().trim();
+		const travel_cert = jQuery('#travel_cert').val().trim();
+
+		let errors = [];
+
+		if (!first) errors.push("First name is required.");
+		if (!last) errors.push("Last name is required.");
+		if (!email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) errors.push("Valid email is required.");
+		if (!phone) errors.push("Phone is required.");
+		if (pw !== pwc) errors.push("Passwords do not match.");
+
+		if (errors.length > 0) {
+			jQuery('#ajax-response').html(errors.join("<br>")).css('color','red');
+			return;
+		}
+		console.log( errors );
+		*/
+
+		data = jQuery('#cp-team-form').serialize();
+
+		response_target = '#ajax-response';
+		response_scroll = '';
+
+		var response_format = jQuery('#cp-team-form').data('response_format');
+
+		if ( response_format == 'inline' ) {
+			response_target = '#ajax-response-inline';
+			response_scroll = jQuery(window).scrollTop(0);
+		}
+
+		jQuery.ajax({
+			url: cyberpatriot.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'process_team_form',
+				nonce: cyberpatriot.nonce,
+				data: jQuery('#cp-team-form').serialize()
+			},
+			success: function(response) {
+				console.log( response );
+				jQuery(response_target).find('div.message').html(response.message);
+				jQuery(response_target).removeClass('ajax-failure');
+				jQuery(response_target).addClass('ajax-success');
+				jQuery(response_target).show();
+				jQuery('.team-form-submit').text('Team Created');
+				//jQuery('#ajax-response').html(response.message).addClass('alert-success');
+				//if (response.success) jQuery('#cp-team-form')[0].reset();
+				//jQuery('#popup-form-container').slideUp();
+			},
+			error: function(xhr,status,error) {
+				jQuery('.team-form-submit').prop('disabled', false).text('Register Team');
+				jQuery('#ajax-response').html('There has been an error processing your form.').addClass('alert-failure');
+				console.log("Status:");
+				console.log(status);
+				console.log("XHR:");
+				console.log(xhr);
+				console.error("AJAX Error:", status.error);
+				console.log("Error:");
+				console.log(error);
+			}
+		});
+	});
+
+	jQuery(document).on('submit', '#cp-competitor-form', function(e) {
+		e.preventDefault();
+
+		/*
+		const competitor_id = jQuery('#competitor_id').val().trim();
+
+		const team_id = jQuery('#team_id').val().trim();
+		const first_name = jQuery('#first_name').val().trim();
+		const last_name = jQuery('#last_name').val().trim();
+		const email = jQuery('#email').val().trim();
+		const t_shirt = jQuery('#t_shirt').val().trim();
+		const parental_release = jQuery('#parental_release').val().trim();
+		const media_release = jQuery('#media_release').val().trim();
+		const code_of_conduct = jQuery('#code_of_conduct').val().trim();
+		const code_of_conduct_confirm = jQuery('#code_of_conduct_confirm').val().trim();
+		const birth_month = jQuery('#birth_month').val().trim();
+		const birth_year = jQuery('#birth_year').val().trim();
+		const grad_year = jQuery('#grad_year').val().trim();
+		const gender = jQuery('#gender').val().trim();
+		const parent_email = jQuery('#parent_email').val().trim();
+		const race = jQuery('#race').val().trim();
+
+		let errors = [];
+
+		if (!first) errors.push("First name is required.");
+		if (!last) errors.push("Last name is required.");
+		if (!email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) errors.push("Valid email is required.");
+		if (!phone) errors.push("Phone is required.");
+		if (pw !== pwc) errors.push("Passwords do not match.");
+
+		if (errors.length > 0) {
+			jQuery('#ajax-response').html(errors.join("<br>")).css('color','red');
+			return;
+		}
+		*/
+
+		data = jQuery('#cp-competitor-form').serialize();
+
+		response_target = '#ajax-response-inline';
+		response_scroll = '';
+
+		var response_format = jQuery('#cp-competitor-form').data('response_format');
+
+		if ( response_format == 'popup' ) {
+			response_target = '#ajax-response';
+			response_scroll = jQuery(window).scrollTop(0);
+		}
+
+		jQuery.ajax({
+			url: cyberpatriot.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'process_competitor_form',
+				nonce: cyberpatriot.nonce,
+				data: jQuery('#cp-competitor-form').serialize()
+			},
+			success: function(response) {
+				console.log( response )
+				jQuery(response_target).find('div.message').html(response.message);
+				jQuery(response_target).removeClass('ajax-failure');
+				jQuery(response_target).addClass('ajax-success');
+				jQuery('.register-competitor-submit').prop('disabled', true);
+				jQuery('.register-competitor-cancel').prop('disabled', true);
+				jQuery(response_target).show();
+				jQuery('.popup-form-container .form-container').scrollTop(0);
+				response_scroll;
+				if (response.success) {
+					if ( response.dest ) {
+						//window.location.href = response.dest;
+					} else {
+						//window.location.reload()
+					}
+				}
+			},
+			error: function(xhr,status,error) {
+				jQuery(response_target).find('div.message').html("<b>PROBLEM</b>There has been an error processing your form.");
+				jQuery(response_target).removeClass('ajax-success');
+				jQuery(response_target).addClass('ajax-failure');
+				jQuery(response_target).show();
+				jQuery('.popup-form-container .form-container').scrollTop(0);
+				console.log("Status:");
+				console.log(status);
+				console.log("XHR:");
+				console.log(xhr);
+				console.error("AJAX Error:", status.error);
+				console.log("Error:");
+				console.log(error);
+			}
+		});
+	});
+
+	jQuery(document).on('submit', '#cp-confirm-form', function(e) {
+		e.preventDefault();
+
+		data = jQuery('#cp-confirm-form').serialize();
+
+		jQuery.ajax({
+			url: cyberpatriot.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'process_confirm_form',
+				nonce: cyberpatriot.nonce,
+				data: jQuery('#cp-confirm-form').serialize()
+			},
+			success: function(response) {
+				cp_complete(response);
+			},
+			error: function(xhr,status,error) {
+				jQuery('#ajax-response').html('There has been an error processing your form.').addClass('alert-failure');
+				console.log("Status:");
+				console.log(status);
+				console.log("XHR:");
+				console.log(xhr);
+				console.error("AJAX Error:", status.error);
+				console.log("Error:");
+				console.log(error);
+			}
+		});
+	});
+
+	jQuery(document).on('submit', '.cp-mentor-contact-form', function(e) {
+		e.preventDefault();
+
+		const thisform = jQuery(this);
+		const team_id = thisform.find('[name="team_id"]').val().trim();
+		const mentor_id = thisform.find('[name="mentor_id"]').val().trim();
+		const coach_id = thisform.find('[name="coach_id"]').val().trim();
+		//const parent_id = thisform.find('[name="parent_id"]').val().trim();
+		//const contact_type = thisform.find('[name="contact_type"]').val().trim();
+		const message = thisform.find('[name="message"]').val().trim();
+
+		let errors = [];
+
+		if (!message) errors.push("Please enter a message.");
+		if (!team_id || !mentor_id || !coach_id) errors.push("A form error has occurred.");
+
+		if (errors.length > 0) {
+			jQuery('.ajax-response-mentor-contact-form').html(errors.join("<br>")).addClass('ajax-failure');
+			return;
+		}
+
+		jQuery.ajax({
+			url: cyberpatriot.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'process_mentor_contact_form',
+				nonce: cyberpatriot.nonce,
+				data: thisform.serialize()
+			},
+			success: function(response) {
+				jQuery('.ajax-response-mentor-contact-form').html(response.message).removeClass('ajax-failure');
+				jQuery('.ajax-response-mentor-contact-form').html(response.message).addClass('ajax-success');
+				if (response.success) {
+					jQuery('tr.mentor-about, tr.team-about').hide();
+				}
+			},
+			error: function(xhr,status,error) {
+				jQuery('.ajax-response-mentor-contact-form').html("There has been an error processing your form.").removeClass('ajax-success');
+				jQuery('.ajax-response-mentor-contact-form').html("There has been an error processing your form.").addClass('ajax-failure');
+				console.error("AJAX Error:", status.error);
+			}
+		});
+	});
+
+	jQuery(document).on('click', '.cp_mentor_refuse_team, .cp_mentor_accept_team, .cp_team_refuse_mentor, .cp_team_accept_mentor', function(e) {
+		e.preventDefault();
+
+		const thisform = jQuery(this).closest('form');
+		const team_id = thisform.find('[name="team_id"]').val().trim();
+		const mentor_id = thisform.find('[name="mentor_id"]').val().trim();
+		const message_id = thisform.find('[name="message_id"]').val().trim();
+		const action = jQuery(this).val().trim();
+		//const contact_type = thisform.find('[name="contact_type"]').val().trim();
+		//const message = thisform.find('[name="message"]').val().trim();
+
+		var formdata = thisform.serialize();
+
+		formdata += '&action=' + action;
+
+		let errors = [];
+
+		if ( ! team_id || ! mentor_id || ! message_id || ! action ) errors.push("A form error has occurred.");
+
+		if (errors.length > 0) {
+			jQuery('#ajax-response').html(errors.join("<br>")).addClass('ajax-failure');
+			jQuery('#ajax-response').show();
+			return;
+		}
+
+		jQuery.ajax({
+			url: cyberpatriot.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'process_mentor_actions_form',
+				nonce: cyberpatriot.nonce,
+				data: formdata
+			},
+			success: function(response) {
+				console.log( response );
+				jQuery('#ajax-response div.message').html("<b>SUCCESS</b><br/>"+response.message);
+				jQuery('#ajax-response').removeClass('ajax-failure');
+				jQuery('#ajax-response').addClass('ajax-success');
+				jQuery('#ajax-response').show();
+			},
+			error: function(xhr,status,error) {
+				jQuery('#ajax-response div.message').html("<b>PROBLEM</b><br/>There has been an error processing your form.");
+				jQuery('#ajax-response').removeClass('ajax-success');
+				jQuery('#ajax-response').addClass('ajax-failure');
+				jQuery('#ajax-response').show();
+				console.error("AJAX Error:", status.error);
+			}
+		});
+	});
+
+	// TEAM FUNCTIONS
+	// ===================================================================
+
+	jQuery('#add_new_team').click(function() {
+		add_edit_team(0);
+	});
+
+	jQuery('#mentor_find_team').click(function() {
+		mentor_find_team();
+	});
+
+	// different structure for item added to dom later
+	jQuery(document).on('click', '#mentor_search_team', function() {
+		mentor_search_team();
+	});
+
+	jQuery(document).on('click', '#team_search_mentor', function() {
+		team_search_mentor();
+	});
+
+	jQuery(document).on('submit', '.cp-mentor-team-search-form', function(e) {
+		e.preventDefault();
+		mentor_search_team();
+	});
+
+	jQuery('.cp_team_actions').change(function() {
+		$parent_form = jQuery(this).closest('form');
+		team_id = $parent_form.find('.team_id').val();
+		if (jQuery(this).val() === 'register_competitor') {
+			team_register_competitor( team_id );
+		}
+		if (jQuery(this).val() === 'edit_cisco') {
+			team_edit_cisco( team_id );
+		}
+		if (jQuery(this).val() === 'find_mentor') {
+			console.log(".cp_team_actions - team id is " + team_id);
+			team_find_mentor( team_id );
+		}
+		if (jQuery(this).val() === 'resend_verifier') {
+			cp_confirm( team_id, 'resend_verifier' )
+		}
+		if (jQuery(this).val() === 'request_waiver') {
+			cp_confirm( team_id, 'request_waiver' )
+		}
+		if (jQuery(this).val() === 'pay_now') {
+			cp_confirm( team_id, 'pay_now' )
+		}
+		if (jQuery(this).val() === 'invoice') {}
+		if (jQuery(this).val() === 'receipt') {}
+		if (jQuery(this).val() === 'edit_team') {
+			add_edit_team(team_id);
+		}
+		if (jQuery(this).val() === 'delete_team') {
+			cp_confirm( team_id, 'delete_team' )
+		}
+		jQuery('.cp_team_actions option').prop('selected', function() {
+			return this.defaultSelected;
+		});
+	});
+
+	function add_edit_team( team_id ) {
+		login_id = jQuery('#login_id').val();
+		jQuery.ajax({
+			url: cyberpatriot.form_url,
+			type: 'POST',
+			data: {
+				form: 'team_form',
+				id: team_id,
+				args: {
+					submitted_by: login_id
+				},
+			},
+			success: function(response) {
+				jQuery('#popup-form-container div').html(response); // Load form into the popup container
+				jQuery('#popup-form-container').slideDown(); // Show the popup
+			},
+			error: function(xhr, status, error) {
+				console.error("Error loading form:", error);
+			}
+		});
+	}
+
+	function team_register_competitor( team_id ) {
+		login_id = jQuery('#login_id').val();
+		jQuery.ajax({
+			url: cyberpatriot.form_url,
+			type: 'POST',
+			data: {
+				form: 'competitor',
+				id: 0,
+				args: {
+					coach_id: login_id,
+					team_id: team_id,
+					form: 'coach',
+					title: 'Register a New Competitor'
+				},
+
+			},
+			success: function(response) {
+				jQuery('#popup-form-container div').html(response); // Load form into the popup container
+				jQuery('#popup-form-container').slideDown(); // Show the popup
+			},
+			error: function(xhr, status, error) {
+				console.error("Error loading form:", error);
+			}
+		});
+	};
+
+	function team_edit_cisco( team_id ) {
+		login_id = jQuery('#login_id').val();
+		jQuery.ajax({
+			url: cyberpatriot.form_url,
+			type: 'POST',
+			data: {
+				form: 'cisco',
+				id: team_id,
+				args: {
+					coach_id: login_id,
+					title: 'Add or Update Cisco Login'
+				},
+
+			},
+			success: function(response) {
+				jQuery('#popup-form-container div').html(response); // Load form into the popup container
+				jQuery('#popup-form-container').slideDown(); // Show the popup
+			},
+			error: function(xhr, status, error) {
+				console.error("Error loading form:", error);
+			}
+		});
+	};
+
+	function team_search_mentor() {
+		login_id = jQuery('#login_id').val();
+		team_id = jQuery('#team-mentor-search-team-id').val();
+		search_string = jQuery('#team-mentor-search-string').val();
+		jQuery.ajax({
+			url: cyberpatriot.form_url,
+			type: 'POST',
+			data: {
+				form: 'team_find_mentor',
+				id: team_id,
+				args: {
+					title: 'Search for a Mentor',
+					coach_id: login_id,
+					search: search_string
+				},
+
+			},
+			success: function(response) {
+				jQuery('#popup-form-container div').html(response); // Load form into the popup container
+				jQuery('#popup-form-container').slideDown(); // Show the popup
+			},
+			error: function(xhr, status, error) {
+				console.error("Error loading form:", error);
+			}
+		});
+	}
+
+	function team_find_mentor( team_id ) {
+		login_id = jQuery('#login_id').val();
+		jQuery.ajax({
+			url: cyberpatriot.form_url,
+			type: 'POST',
+			data: {
+				form: 'team_find_mentor',
+				id: team_id,
+				args: {
+					coach_id: login_id,
+					title: 'Find a Mentor'
+				},
+
+			},
+			success: function(response) {
+				jQuery('#popup-form-container div').html(response); // Load form into the popup container
+				jQuery('#popup-form-container').slideDown(); // Show the popup
+			},
+			error: function(xhr, status, error) {
+				console.error("Error loading form:", error);
+			}
+		});
+	};
+
+	function mentor_search_team() {
+		login_id = jQuery('#login_id').val();
+		search_string = jQuery('#mentor-team-search-string').val();
+		jQuery.ajax({
+			url: cyberpatriot.form_url,
+			type: 'POST',
+			data: {
+				form: 'mentor_find_team',
+				id: login_id,
+				args: {
+					title: 'Search for a Team',
+					search: search_string
+				},
+
+			},
+			success: function(response) {
+				jQuery('#popup-form-container div').html(response); // Load form into the popup container
+				jQuery('#popup-form-container').slideDown(); // Show the popup
+			},
+			error: function(xhr, status, error) {
+				console.error("Error loading form:", error);
+			}
+		});
+	}
+
+	function mentor_find_team() {
+		login_id = jQuery('#login_id').val();
+		jQuery.ajax({
+			url: cyberpatriot.form_url,
+			type: 'POST',
+			data: {
+				form: 'mentor_find_team',
+				id: login_id,
+				args: {
+					title: 'Find a Team'
+				},
+
+			},
+			success: function(response) {
+				jQuery('#popup-form-container div').html(response); // Load form into the popup container
+				jQuery('#popup-form-container').slideDown(); // Show the popup
+			},
+			error: function(xhr, status, error) {
+				console.error("Error loading form:", error);
+			}
+		});
+	};
+
+	// COMPETITOR FUNCTIONS
+	// ===================================================================
+
+	jQuery('.cp_competitor_actions').change(function() {
+		$parent_form = jQuery(this).closest('form');
+		competitor_id = $parent_form.find('.competitor_id').val();
+		if (jQuery(this).val() === 'update_competitor') {
+			competitor_update( competitor_id );
+		}
+		if (jQuery(this).val() === 'delete_competitor') {
+			cp_confirm( competitor_id, 'delete_competitor' );
+		}
+		if (jQuery(this).val() === 'move_competitor') {
+			cp_confirm( competitor_id, 'move_competitor' );
+		}
+		if (jQuery(this).val() === 'resend_competitor') {
+			cp_confirm( competitor_id, 'resend_competitor' );
+		}
+		if (jQuery(this).val() === 'assign_competitor') {
+			team_id = jQuery('option:selected', this).data('team_id');
+			team_name = jQuery('option:selected', this).text();
+			competitor_reassign( competitor_id, team_id, team_name );
+		}
+		jQuery('.cp_competitor_actions option').prop('selected', function() {
+			return this.defaultSelected;
+		});
+	});
+
+	function competitor_update( competitor_id ) {
+		login_id = jQuery('#login_id').val();
+		if ( /^-?\d+$/.test(String(login_id)) ) {
+			jQuery.ajax({
+				url: cyberpatriot.form_url,
+				type: 'POST',
+				data: {
+					form: 'competitor',
+					id: competitor_id,
+					args: {
+						coach_id: login_id,
+						title: 'Edit Competitor Info'
+					},
+				},
+				success: function(response) {
+					jQuery('#popup-form-container div').html(response); // Load form into the popup container
+					jQuery('#popup-form-container').slideDown(); // Show the popup
+				},
+				error: function(xhr, status, error) {
+					console.error("Error loading form:", error);
+				}
+			});
+		} else {
+			jQuery('#popup-form-container div').html("Coach ID could not be verified. Please login again."); // Load form into the popup container
+			jQuery('#popup-form-container').slideDown(); // Show the popup
+		}
+	};
+
+	function competitor_reassign( competitor_id, team_id ) {
+		jQuery.ajax({
+			url: cyberpatriot.form_url,
+			type: 'POST',
+			data: {
+				form: 'competitor_reassign',
+				id: competitor_id,
+				args: {
+					team_id: team_id,
+					team_name: team_name
+				},
+			},
+			success: function(response) {
+				jQuery('#popup-form-container div').html(response); // Load form into the popup container
+				jQuery('#popup-form-container').slideDown(); // Show the popup
+			},
+			error: function(xhr, status, error) {
+				console.error("Error loading form:", error);
+			}
+		});
+	};
+
+	// INVOICE FUNCTIONS
+	// ===================================================================
+
+	jQuery(document).on('submit', '#invoice-team-select', function(e) {
+		e.preventDefault();
+		var teams = jQuery('input[name="teams"]:checked').map(function() {
+			return jQuery(this).val();
+		}).get();
+		cp_invoice_form( 0, teams );
+	});
+
+	jQuery(document).on('click', '.edit-invoice-button', function(e) {
+		var id = jQuery(this).data('id');
+		cp_invoice_form( id, false );
+	});
+
+	jQuery(document).on('click', '.delete-invoice-button', function(e) {
+		var id = jQuery(this).data('id');
+		cp_confirm( id, 'delete_invoice' );
+	});
+
+	function cp_invoice_form( id, teams ) {
+		jQuery.ajax({
+			url: cyberpatriot.form_url,
+			type: 'POST',
+			data: {
+				form: 'create_invoice',
+				id: id,
+				args: {
+					teams: teams
+				},
+			},
+			success: function(response) {
+				jQuery('.close_button').hide();
+				jQuery('#popup-form-container div').html(response); // Load form into the popup container
+				jQuery('#popup-form-container').slideDown(); // Show the popup
+			},
+			error: function(xhr, status, error) {
+				console.error("Error loading form:", error);
+			}
+		});
+
+	}
+
+	jQuery(document).on('click', '.pay-now-button', function(e) {
+		var id = jQuery(this).data('id');
+		cp_payment_form( id );
+	});
+
+	function cp_payment_form( id ) {
+		jQuery.ajax({
+			url: cyberpatriot.form_url,
+			type: 'POST',
+			data: {
+				form: 'payment_form',
+				id: id,
+			},
+			success: function(response) {
+				jQuery('.close_button').hide();
+				jQuery('#popup-form-container div').html(response); // Load form into the popup container
+				jQuery('#popup-form-container').slideDown(); // Show the popup
+			},
+			error: function(xhr, status, error) {
+				console.error("Error loading form:", error);
+			}
+		});
+
+	}
+
+	// GENERIC FUNCTIONS
+	// ===================================================================
+
+	function cp_confirm( id, action ) {
+		form = 'confirm';
+		if ( action == 'request_waiver' ) {
+			form = 'request_waiver';
+		}
+		if ( action == 'pay_now' ) {
+			form = 'pay_now';
+		}
+		jQuery.ajax({
+			url: cyberpatriot.form_url,
+			type: 'POST',
+			data: {
+				form: form,
+				id: id,
+				args: {
+					action: action
+				},
+			},
+			success: function(response) {
+				jQuery('.close_button').hide();
+				jQuery('#popup-form-container div').html(response); // Load form into the popup container
+				jQuery('#popup-form-container').slideDown(); // Show the popup
+			},
+			error: function(xhr, status, error) {
+				console.error("Error loading form:", error);
+			}
+		});
+
+	}
+
+	function cp_complete( response ) {
+
+		title = ( response.title ) ? response.title : 'Action Complete';
+		message = response.message;
+
+		jQuery(".confirm-form").html('<h2>' + title + '</h2><div id="form-message">' + message + '</div><form id="cp-confirm-form" class="portal-form" method="post"><input type="button" value="Okay" onClick="location.reload();" /></form>')
+
+	}
+
+	function activateTab(tabId) {
+		jQuery('.tab-button').each(function () {
+			jQuery(this).toggleClass('active', jQuery(this).data('tab') === tabId);
+		});
+
+		jQuery('.tab-panel').each(function () {
+			jQuery(this).toggleClass('active', jQuery(this).attr('id') === tabId);
+		});
+	}
+
+	// Click handler
+	jQuery('.tab-button, .tab-link').on('click', function () {
+		var tabId = jQuery(this).data('tab');
+
+		// Store selection
+		localStorage.setItem('activeTab', tabId);
+
+		activateTab(tabId);
+	});
+
+	// Restore saved tab on load
+	var savedTab = localStorage.getItem('activeTab');
+
+	if (savedTab && jQuery('#' + savedTab).length) {
+		activateTab(savedTab);
+	}
+
+});
+
+// STRIPE
+document.querySelectorAll('.share-button').forEach((shareButton) => {
+	shareButton.addEventListener('click', async (event) => {
+		event.preventDefault();
+
+		const shareLink = event.currentTarget;
+
+		const shareData = {
+			title: shareLink.dataset.shareTitle,
+			text: shareLink.dataset.shareText,
+			url: shareLink.dataset.shareUrl
+		};
+
+		try {
+			// Check if the browser supports native sharing
+			if (navigator.share) {
+				await navigator.share(shareData);
+				console.log('Shared successfully');
+			} else {
+				// Fallback if browser doesn't support Web Share API
+				alert('Sharing not supported. URL: ' + shareData.url);
+			}
+		} catch (err) {
+			console.log('Error or user cancelled: ', err);
+		}
+	});
+});

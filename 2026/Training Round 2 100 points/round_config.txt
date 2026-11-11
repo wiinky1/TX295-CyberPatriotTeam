@@ -1,0 +1,31 @@
+# round_config.txt — sourceable shell (sourced by Harden_v7.sh)
+# One file per round/image. Generated from that round's README + answer key.
+# Only the VALUES that change between images live here — the script
+# itself contains none of these.
+#
+# --- round identity ---
+ROUND_LABEL="S19 Training R2 — Debian 12 (Aegon's Flight Academy)"
+
+# --- user tasks (space-separated where a list) ---
+REMOVE_USERS="athorne pbaelish"          # userdel --force --remove-home
+SUDO_REMOVE="jlannister"                 # gpasswd -d sudo (keep account)
+GROUP_TASKS="bselmy queensguard"         # "<user> <group>" pair
+PW_SET="rbaratheon:SteelClaw-King#2026"  # "<user>:<password>" pairs
+
+# --- password policy values (per-round requirements) ---
+MINLEN=12
+PASS_MIN_DAYS=7
+
+# --- services & packages (this image's scored targets) ---
+STOP_SERVICES="apache2 vsftpd"           # answer key: item 15 apache2 + item 16 FTP/vsftpd — both stop/disable
+PURGE_PKGS="wireshark aisleriot"         # forbidden-on-this-image list
+POLL_PKGS="blueman udisks2 avahi-daemon avahi cups-browsed bluetooth modemmanager"
+SMB_REMOVAL=no                           # yes|no
+MEDIA_EXTS="mp3"                           # answer key item 19: locate *.mp3 — mp3 only
+
+# --- sacrosanct keep-lists (never stopped/purged even if named above) ---
+KEEP_SERVICES="sshd ssh"               # README: only sshd critical on Debian (vsftpd is a STOP target here)
+KEEP_PKGS=""
+
+# --- misc ---
+APT_PERIODIC=1                           # APT::Periodic::Update-Package-Lists

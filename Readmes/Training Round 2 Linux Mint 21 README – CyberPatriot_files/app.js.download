@@ -1,0 +1,1 @@
+jQuery(document).ready(function(){jQuery(".tab-button").on("click",function(){const tabId=jQuery(this).data("tab");jQuery(".tab-button").removeClass("active"),jQuery(this).addClass("active"),jQuery(".tab-panel").removeClass("active"),jQuery("#"+tabId).addClass("active")}),jQuery(".open-cookiebot").on("click",function(e){e.preventDefault(),Cookiebot.show()})});
