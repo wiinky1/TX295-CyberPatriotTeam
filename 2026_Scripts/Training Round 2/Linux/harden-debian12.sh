@@ -14,12 +14,18 @@
 #   7. Disables UNWANTED_SERVICES (skipped if not installed; sshd is NEVER touched).
 #   8. Optional: removes a rogue 'nc.traditional' shell backdoor (binary, processes,
 #      and its root crontab line) if present.
+#   9. Purges PROHIBITED_PACKAGES (round-specific prohibited software), removes
+#      prohibited .mp3 media under /home, and disables SSH root login (safe tweak).
 #
 # Intentionally OUT OF SCOPE (machine/scenario-specific judgments):
 #   - user account management (creating, deleting, passwords, group membership)
 #   - forensics questions / evidence files
-#   - enabling or disabling business-critical services
-#   - deleting personal media or content files
+#   - stopping or removing critical services (sshd / LightDM / chromium NEVER stopped)
+#
+# Round-specific (edit the CONFIG lists above to match each round's answer key):
+#   - PROHIBITED_PACKAGES : prohibited software to purge (e.g. aisleriot, wireshark)
+#   - REMOVE_MP3          : delete prohibited .mp3 media planted under /home
+#   - DISABLE_SSH_ROOT    : PermitRootLogin no (safe; does NOT stop the sshd service)
 #
 # Usage: sudo bash harden-debian12.sh [--skip-apt] [--no-backdoor-cleanup]
 #
@@ -28,11 +34,14 @@ set -u
 # ============================ CONFIG ==========================================
 SSH_PORT=22                                   # port to allow through UFW
 UNWANTED_SERVICES=(apache2 vsftpd)            # non-essential services to disable
+PROHIBITED_PACKAGES=(aisleriot wireshark wireshark-gnome)  # prohibited software to purge (per round)
 EXTRA_PACKAGES=(chromium openssh-server)      # ensure these are at latest stable
 PERIODIC_UPDATE_LISTS="1"                     # APT::Periodic::Update-Package-Lists
 PASS_MIN_DAYS=7
 PW_MINLEN=12
 RUN_BACKDOOR_CLEANUP=1
+REMOVE_MP3=1                                  # remove prohibited .mp3 files under /home
+DISABLE_SSH_ROOT=1                            # PermitRootLogin no (safe: does NOT stop sshd)
 SKIP_APT=0
 # ==============================================================================
 
@@ -99,9 +108,18 @@ grep -qE "^PASS_MIN_DAYS\s+${PASS_MIN_DAYS}\s*$" /etc/login.defs \
   || fail "PASS_MIN_DAYS not set"
 
 # 3b. common-auth: remove nullok
+# verify-or-restore: if this edit would corrupt the auth stack, roll it back
+# to the known-good backup so the script can NEVER leave the box unable to
+# authenticate (lesson from the 2026-11-11 faillock incident).
 if grep -q 'nullok' /etc/pam.d/common-auth; then
   sed -i 's/pam_unix\.so nullok/pam_unix.so/' /etc/pam.d/common-auth
-  log "removed 'nullok' from common-auth"
+  if ! grep -q 'pam_unix.so' /etc/pam.d/common-auth; then
+    LATEST=$(ls -1d /root/pam.d.bak.* 2>/dev/null | sort | tail -1)
+    [ -n "$LATEST" ] && [ -f "$LATEST/common-auth" ] && cp -a "$LATEST/common-auth" /etc/pam.d/common-auth
+    fail "common-auth edit failed — restored original (auth chain preserved)"
+  else
+    log "removed 'nullok' from common-auth"
+  fi
 fi
 grep -q 'pam_unix.so' /etc/pam.d/common-auth || fail "common-auth missing pam_unix.so — inspect it"
 
@@ -172,6 +190,67 @@ if [ "$RUN_BACKDOOR_CLEANUP" = "1" ]; then
   fi
 fi
 
+# ------------------------------------------- 7b. prohibited software (purge) ---
+# Round-specific prohibited packages (edit PROHIBITED_PACKAGES above per round).
+# These are GUI/tool packages, not services, so they are PURGED, not disabled.
+log "prohibited software"
+if [ "${#PROHIBITED_PACKAGES[@]}" -gt 0 ]; then
+  for pkg in "${PROHIBITED_PACKAGES[@]}"; do
+    if dpkg -s "$pkg" >/dev/null 2>&1; then
+      apt-get purge -y "$pkg" >/dev/null 2>&1 && log "purged prohibited package: $pkg" \
+        || log "could not purge prohibited package: $pkg"
+    else
+      log "$pkg not installed — nothing to do"
+    fi
+  done
+  apt-get autoremove -y >/dev/null 2>&1 || true
+else
+  log "no prohibited packages configured"
+fi
+
+# --------------------------------------------- 7c. prohibited MP3 files -------
+# Round-specific: remove prohibited .mp3 media planted under user homes.
+if [ "$REMOVE_MP3" = "1" ]; then
+  MP3_COUNT=$(find /home -maxdepth 4 -type f -iname '*.mp3' 2>/dev/null | wc -l)
+  if [ "${MP3_COUNT:-0}" -gt 0 ]; then
+    find /home -maxdepth 4 -type f -iname '*.mp3' -delete 2>/dev/null
+    log "removed ${MP3_COUNT} prohibited .mp3 file(s) under /home"
+  else
+    log "no .mp3 files found under /home"
+  fi
+else
+  log "MP3 cleanup skipped (REMOVE_MP3=0)"
+fi
+
+# ------------------------------------------------ 7d. SSH root login ----------
+# Safe: sets PermitRootLogin no then reloads ssh (SIGHUP — keeps current sessions
+# alive, does NOT stop/restart the service). Validate-or-restore so a bad edit
+# can never corrupt sshd_config.
+if [ "$DISABLE_SSH_ROOT" = "1" ] && [ -f /etc/ssh/sshd_config ]; then
+  log "SSH root login"
+  SSHTMP="/root/sshd_config.bak.$(date +%Y%m%d)"
+  cp -a /etc/ssh/sshd_config "$SSHTMP" 2>/dev/null || true
+  if grep -Eq '^[[:space:]]*#?[[:space:]]*PermitRootLogin' /etc/ssh/sshd_config; then
+    sed -ri 's/^[[:space:]]*#?[[:space:]]*PermitRootLogin[[:space:]]+.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+  else
+    printf '\nPermitRootLogin no\n' >> /etc/ssh/sshd_config
+  fi
+  if ! sshd -t 2>/dev/null; then
+    [ -f "$SSHTMP" ] && cp -a "$SSHTMP" /etc/ssh/sshd_config
+    fail "sshd_config invalid after edit — restored original (SSH preserved)"
+  else
+    systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
+    EFF=$(sshd -T 2>/dev/null | awk '/^permitrootlogin/ {print $2}')
+    if [ "${EFF:-}" = "no" ]; then
+      log "PermitRootLogin no applied (service untouched, reload ok)"
+    else
+      log "WARN: effective permitrootlogin='${EFF:-unset}' (an sshd_config.d file may override)"
+    fi
+  fi
+else
+  log "SSH root-login disable skipped (DISABLE_SSH_ROOT=0 or no sshd_config)"
+fi
+
 # ------------------------------------------------- 8. APT periodic (LAST) -----
 log "APT periodic (applied last so APT cannot revert it)"
 echo "APT::Periodic::Update-Package-Lists \"${PERIODIC_UPDATE_LISTS}\";" > /etc/apt/apt.conf.d/20auto-upgrades
@@ -183,11 +262,15 @@ log "=== SUMMARY ==="
 echo "  PASS_MIN_DAYS   : $(grep -E '^PASS_MIN_DAYS' /etc/login.defs | awk '{print $2}')"
 echo "  nullok          : $(grep -q 'nullok' /etc/pam.d/common-auth && echo PRESENT || echo removed)"
 echo "  minlen          : $(grep -oE 'minlen=[0-9]+' /etc/pam.d/common-password || echo MISSING)"
+echo "  common-auth     : $(grep -q 'pam_unix.so' /etc/pam.d/common-auth && echo 'OK (pam_unix present, auth chain intact)' || echo 'BROKEN - restore from /root/pam.d.bak.*')"
 echo "  tcp_syncookies  : $(sysctl -n net.ipv4.tcp_syncookies 2>/dev/null)"
 echo "  ip_forward      : $(sysctl -n net.ipv4.ip_forward 2>/dev/null)"
 echo "  shadow perms    : $(stat -c '%a' /etc/shadow)"
 echo "  ufw             : $(ufw status 2>/dev/null | head -1)"
 echo "  nc backdoor     : $( [ -e /usr/bin/nc.traditional ] && echo PRESENT || echo absent )"
+echo "  prohibited pkgs : $(for p in "${PROHIBITED_PACKAGES[@]}"; do if dpkg -s "$p" >/dev/null 2>&1; then printf '%s=present ' "$p"; else printf '%s=purged ' "$p"; fi; done)"
+echo "  mp3 under /home : $(find /home -maxdepth 4 -type f -iname '*.mp3' 2>/dev/null | wc -l) remaining"
+echo "  ssh root login  : permitrootlogin=$(sshd -T 2>/dev/null | awk '/^permitrootlogin/ {print $2}')"
 echo "  apt periodic    : $(cat /etc/apt/apt.conf.d/20auto-upgrades)"
 echo
 log "Done. Re-run anytime — every step is idempotent."
